@@ -1567,6 +1567,38 @@ h2o.which <- function(x) {
   else .newExpr("which",x) + 1
 }
 
+#' Which indice contains the max value?
+#'
+#' Get the index of the max value in a column or row
+#'
+#' @param x An H2OFrame object.
+#' @return Returns an H2OFrame object.
+#' @seealso \code{\link[base]{which.max}} for the base R method.
+#' @export
+h2o.which_max <- function(x,na.rm = FALSE,axis = 0, ...) {
+  if( !is.H2OFrame(x) ){
+    stop("must be an H2OFrame")
+  }
+  .newExpr("which.max", chk.H2OFrame(x), na.rm, axis) + 1
+}
+
+#' @rdname h2o.which_max
+#' @export
+which.max.H2OFrame <- h2o.which_max
+
+#' Which index contains the min value?
+#'
+#' Get the index of the min value in a column or row
+#'
+#' @param x An H2OFrame object.
+#' @return Returns an H2OFrame object.
+#' @seealso \code{\link[base]{which.min}} for the base R method.
+#' @export
+h2o.which_min <- function(x) {
+  if( !is.H2OFrame(x) ) stop("must be an H2OFrame")
+  else .newExpr("which.min",x) + 1
+}
+
 #' Count of NAs per column
 #'
 #' Gives the count of NAs per column.
@@ -3749,6 +3781,10 @@ apply <- function(X, MARGIN, FUN, ...) {
     if( nargs > 0 ) extra_args <- c(extra_args,tail(args,nargs))
     fcn <- if( length(extra_args)==0 ) fname
            else paste0("{ COL . (",fname," COL ",paste(extra_args,collapse=" "),")}")
+
+    if(fname == "which.max"){
+      return(.newExpr("apply",X,MARGIN,fcn) + 1)
+    }
     return(.newExpr("apply",X,MARGIN,fcn))
   }
 
