@@ -93,6 +93,10 @@ public class GLM extends ModelBuilder<GLMModel,GLMParameters,GLMOutput> {
     super.computeCrossValidation();
   }
 
+  protected int nModelsInParallel() {
+    return 1000;
+  }
+
   /**
    * If run with lambda search, we need to take extra action performed after cross-val models are built.
    * Each of the folds have been computed with ots own private validation datasetd and it performed early stopping based on it.
@@ -786,7 +790,7 @@ public class GLM extends ModelBuilder<GLMModel,GLMParameters,GLMOutput> {
       double objold = _state.objective();
       int iter2=0; // total cd iters
       // get reweighted least squares vectors
-      Vec[] newVecs = _state.activeData()._adaptedFrame.anyVec().makeZeros(3);
+      Vec[] newVecs = _state.activeData()._adaptedFrame.anyVec().makeVolatileDoubles(3);
       Vec w = newVecs[0]; // fixed before each CD loop
       Vec z = newVecs[1]; // fixed before each CD loop
       Vec zTilda = newVecs[2]; // will be updated at every variable within CD loop
@@ -927,6 +931,8 @@ public class GLM extends ModelBuilder<GLMModel,GLMParameters,GLMOutput> {
     }
     private void fitModel() {
       Solver solver = (_parms._solver == Solver.AUTO) ? defaultSolver() : _parms._solver;
+      if(solver == Solver.COORDINATE_DESCENT_NAIVE && _state.activeData().fullN() < 500)
+        solver = Solver.COORDINATE_DESCENT;
       switch (solver) {
         case COORDINATE_DESCENT: // fall through to IRLSM
         case IRLSM:
