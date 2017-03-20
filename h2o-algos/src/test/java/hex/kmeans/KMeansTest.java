@@ -125,7 +125,7 @@ public class KMeansTest extends TestUtil {
     KMeansModel kmm2 = null;
     Frame fr = null;
     try {
-      fr = parse_test_file("smalldata/junit/weather.csv");
+      fr = parse_test_file("smalldata/junit/weathecsv");
 
       KMeansModel.KMeansParameters parms = new KMeansModel.KMeansParameters();
       parms._train = fr._key;
