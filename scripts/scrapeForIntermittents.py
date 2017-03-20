@@ -37,7 +37,6 @@ g_failed_testnames = []
 g_failed_test_paths = []
 g_failed_tests_dict = ''    # contains the filename that contains failed tests info in a dictionary
 g_failed_tests_info_dict = dict()   # store failed tests info in a dictionary
-g_suspected_intermittent_dict = dict()  # store failed tests that are intermittent
 g_resource_url = ''
 
 def init_failed_tests_dict():
@@ -50,11 +49,20 @@ def init_failed_tests_dict():
     g_failed_tests_info_dict["TestInfo"] = []
 
 
-def init_update_each_failed_test_dict(failed_test_path, newTest):
+def init_update_each_failed_test_dict(one_test_info, failed_test_path, newTest):
     """
     For each test, a dictionary structure will be built to record the various info about that test's failure
-    information.
-
+    information.  In particular, for each failed tests, there will be a dictionary associated with that test
+    stored in the field "TestInfo" of g_faiiled_tests_info_dict.  The following fields are included:
+        "JenkinsJobName": job name
+        "BuildID"
+        "Timestamp": in seconds
+        "GitHash"
+        "TestCategory": JUnit, PyUnit, RUnit or HadoopPyUnit, HadoopRUnit
+        "NodeName": name of machine that the job was run on
+        "FailureCount": integer counting number of times this particular test has failed.  An intermittent can be
+          determined as any test with FailureCount >= 2.
+        "FailureMessages": contains failure messages for the test
     :return: a new dict for that test
     """
     if newTest:
@@ -174,7 +182,7 @@ def save_failed_tests_info():
         with open(g_summary_text_filename, 'a') as failed_file:
             for index in range(len(g_failed_testnames)):
 
-                testInfo = ','.join([g_timestamp, g_job_name, str(g_build_id), g_git_hash, g_node_name,
+                testInfo = ','.join([str(g_timestamp), g_job_name, str(g_build_id), g_git_hash, g_node_name,
                                      g_unit_test_type, g_failed_testnames[index]])
                 failed_file.write(testInfo)
                 failed_file.write('\n')
@@ -196,10 +204,12 @@ def update_failed_test_info_dict(failed_testname, failed_test_path):
 
     if failed_testname in g_failed_tests_info_dict["TestName"]:     # existing test
         g_failed_tests_info_dict["TestInfo"][g_failed_tests_info_dict["TestName"].index(failed_testname)] = \
-            init_update_each_failed_test_dict(failed_test_path, False)
+            init_update_each_failed_test_dict(
+                g_failed_tests_info_dict["TestInfo"][g_failed_tests_info_dict["TestName"].index(failed_testname)],
+                failed_test_path, False)
     else:   # next test
         g_failed_tests_info_dict["TestName"].append(failed_testname)
-        g_failed_tests_info_dict["TestInfo"].append(init_update_each_failed_test_dict(failed_test_path, True))
+        g_failed_tests_info_dict["TestInfo"].append(init_update_each_failed_test_dict(dict(), failed_test_path, True))
 
 def trim_data_back_to(monthToKeep):
     """
@@ -225,17 +235,28 @@ def clean_up_failed_test_dict(oldest_time_allowed):
         with open(g_failed_tests_dict, 'rb') as dict_file:
             g_failed_tests_info_dict = pickle.load(dict_file)
 
-            for index in range(len(g_failed_tests_info_dict["Testname"])):  # clean up each failed test
-                test_dicts = g_failed_tests_info_dict["TestInfo"]   # a list of dictionary
+            test_index = 0
+            while test_index < len(g_failed_tests_info_dict["Testname"]):
+                test_dicts = g_failed_tests_info_dict["TestInfo"][test_index]   # a list of dictionary
 
-                while (len(test_dicts[0]["Timestamp"]) > 0) and (test_dicts[0]["Timestamp"] <= oldest_time_allowed):
-                    del test_dicts[0]
+                dict_index = 0
+                while (len(test_dicts["Timestamp"]) > 0) and (dict_index < len(test_dicts["Timestamp"])):
+                    if (test_dicts["Timestamp"][dict_index] < oldest_time_allowed):
+                        del test_dicts["JenkinsJobName"][dict_index]
+                        del test_dicts["BuildID"][dict_index]
+                        del test_dicts["Timestamp"][dict_index]
+                        del test_dicts["GitHash"][dict_index]
+                        del test_dicts["TestCategory"][dict_index]
+                        del test_dicts["NodeName"][dict_index]
+                        test_dicts["FailureCount"] -= 1
+                    else:
+                        dict_index = dict_index+1
 
-            for testname in g_failed_tests_info_dict["Testname"]:
-                testIndex = g_failed_tests_info_dict["Testname"].index(testname)
-                if len(g_failed_tests_info_dict["TestInfo"][testIndex])<=0:
-                    del g_failed_tests_info_dict["Testname"][testIndex]
-                    del g_failed_tests_info_dict["TestInfo"][testIndex]
+                if test_dicts["FailureCount"] <= 0: # remove test name with 0 counts of failure count
+                    del g_failed_tests_info_dict["Testname"][test_index]
+                    del g_failed_tests_info_dict["TestInfo"][test_index]
+                else:
+                    test_index = test_index+1
 
         with open(g_failed_tests_dict, 'wb') as dict_file:
             pickle.dump(g_failed_tests_info_dict, dict_file)
@@ -247,7 +268,7 @@ def clean_up_summary_text(oldest_time_allowed):
         with open(g_failed_tests_dict, 'r') as text_file:
             with open(g_temp_filename, 'w') as temp_file:
                 for each_line in text_file:
-                    timestamp = each_line.split(',')[0]
+                    timestamp = float(each_line.split(',')[0])
 
                     if (timestamp > oldest_time_allowed):
                         temp_file.write(each_line)
@@ -294,7 +315,7 @@ def main(argv):
         sys.exit(1)
     else:   # we may be in business
         g_script_name = os.path.basename(argv[0])   # get name of script being run.
-        g_timestamp = argv[1]
+        g_timestamp = float(argv[1])
         g_job_name = argv[2]
         g_build_id = argv[3]
         g_git_hash = argv[4]
@@ -305,13 +326,13 @@ def main(argv):
         g_temp_filename = os.path.join(g_test_root_dir,'tempText')
         g_summary_text_filename = os.path.join(g_test_root_dir, argv[8])
         g_failed_tests_dict = os.path.join(g_test_root_dir, argv[9])
-        monthToKeep = argv[10]
+        monthToKeep = float(argv[10])
 
         g_resource_url = '/'.join([g_jenkins_url, "job", g_job_name, g_build_id])
         get_console_out(g_resource_url+"/#showFailuresLink/")       # save remote console output in local directory
         extract_failed_tests_info()      # grab the console text and stored the failed tests/paths
         save_failed_tests_info()         # save new failed test info into a file
-        if (monthToKeep > 0):
+        if monthToKeep > 0:
             trim_data_back_to(monthToKeep)   # remove data that are too old to save space
 
 if __name__ == "__main__":
