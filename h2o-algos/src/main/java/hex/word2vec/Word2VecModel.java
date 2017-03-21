@@ -40,6 +40,39 @@ public class Word2VecModel extends Model<Word2VecModel, Word2VecParameters, Word
     return new Word2VecMojoWriter(this);
   }
 
+  public Frame toFrame() {
+    try {
+      Vec mrVec = Scope.track(Vec.makeZero(_output._words.length));
+      byte[] types = new byte[1 + _output._vecSize];
+      Arrays.fill(types, Vec.T_NUM);
+      types[0] = Vec.T_STR;
+      String[] colNames = new String[types.length];
+      colNames[0] = "Word";
+      for (int i = 1; i < colNames.length; i++)
+        colNames[i] = "C" + i;
+      return new ConvertToFrameTask(this).doAll(types, mrVec).outputFrame(colNames, null);
+    } finally {
+      Scope.exit();
+    }
+  }
+
+  private static class ConvertToFrameTask extends MRTask<ConvertToFrameTask> {
+    private Word2VecModel _model;
+    public ConvertToFrameTask(Word2VecModel model) { _model = model; }
+    @Override
+    public void map(Chunk[] cs, NewChunk[] ncs) {
+      assert cs.length == 1;
+      assert ncs.length == _model._output._vecSize + 1;
+      Chunk chk = cs[0];
+      int wordOffset = (int) chk.start();
+      int vecPos = _model._output._vecSize * wordOffset;
+      for (int i = 0; i < chk._len; i++) {
+        ncs[0].addStr(_model._output._words[wordOffset + i]);
+        for (int j = 1; j < ncs.length; j++)
+          ncs[j].addNum(_model._output._vecs[vecPos++]);
+      }
+    }
+  }
   /**
    * Takes an input string can return the word vector for that word.
    *

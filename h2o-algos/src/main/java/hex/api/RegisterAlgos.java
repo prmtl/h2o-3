@@ -4,10 +4,13 @@ import hex.word2vec.Word2VecModel;
 import water.H2O;
 import hex.ModelBuilder;
 import water.api.GridSearchHandler;
+import water.rapids.RapidsInit;
 
 public class RegisterAlgos extends water.api.AbstractRegister {
   // Register the algorithms and their builder handlers:
   @Override public void register(String relativeResourcePath) throws ClassNotFoundException {
+    // Register algorithm-specific Rapids
+    RapidsInit.registerAlgoRapids();
     // List of algorithms
     ModelBuilder[] algos = new ModelBuilder[]{
       new hex.deeplearning.DeepLearning(true),
