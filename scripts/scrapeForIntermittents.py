@@ -326,8 +326,10 @@ def main(argv):
         g_jenkins_url = argv[7]
 
         g_temp_filename = os.path.join(g_test_root_dir,'tempText')
-        g_summary_text_filename = os.path.join(g_test_root_dir, argv[8])
-        g_failed_tests_dict = os.path.join(g_test_root_dir, argv[9])
+        g_summary_text_filename = '/'.join([g_test_root_dir, '..', argv[8]])
+        g_failed_tests_dict = '/'.join([g_test_root_dir, '..', argv[9]])
+ #       g_summary_text_filename = os.path.join(g_test_root_dir, argv[8])
+ #       g_failed_tests_dict = os.path.join(g_test_root_dir, argv[9])
         monthToKeep = float(argv[10])
 
         g_resource_url = '/'.join([g_jenkins_url, "job", g_job_name, g_build_id])
