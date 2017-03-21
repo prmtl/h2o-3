@@ -76,23 +76,23 @@ def init_update_each_failed_test_dict(one_test_info, failed_test_path, newTest):
         one_test_info["FailureMessages"] = [] # contains failure messages for the test
         one_test_info["FailureCount"] = 0
 
-    if g_timestamp not in one_test_info["Timestamp"]:
-        one_test_info["JenkinsJobName"].append(g_job_name)
-        one_test_info["BuildID"].append(g_build_id)
-        one_test_info["Timestamp"].append(g_timestamp)
-        one_test_info["GitHash"].append(g_git_hash)
-        one_test_info["TestCategory"].append(g_unit_test_type) # would be JUnit, PyUnit, RUnit or HadoopPyUnit, HadoopRUnit
-        one_test_info["NodeName"].append(g_node_name)
-        one_test_info["FailureCount"] += 1
+#    if g_timestamp not in one_test_info["Timestamp"]:
+    one_test_info["JenkinsJobName"].append(g_job_name)
+    one_test_info["BuildID"].append(g_build_id)
+    one_test_info["Timestamp"].append(g_timestamp)
+    one_test_info["GitHash"].append(g_git_hash)
+    one_test_info["TestCategory"].append(g_unit_test_type) # would be JUnit, PyUnit, RUnit or HadoopPyUnit, HadoopRUnit
+    one_test_info["NodeName"].append(g_node_name)
+    one_test_info["FailureCount"] += 1
 
-        error_url = '/'.join([g_resource_url, 'testReport', failed_test_path])
-        get_console_out(error_url)      # store failure message in temp file
+    error_url = '/'.join([g_resource_url, 'testReport', failed_test_path])
+    get_console_out(error_url)      # store failure message in temp file
 
-        if os.path.isfile(g_temp_filename):
-            with open(g_temp_filename, 'r') as error_file:
-                one_test_info["FailureMessages"].append(error_file.read())
-        else:
-            one_test_info["FailureMessages"].append("")   # append empty error message if file not found
+    if os.path.isfile(g_temp_filename):
+        with open(g_temp_filename, 'r') as error_file:
+            one_test_info["FailureMessages"].append(error_file.read())
+    else:
+        one_test_info["FailureMessages"].append("")   # append empty error message if file not found
     return one_test_info
 
 def usage():
@@ -236,7 +236,7 @@ def clean_up_failed_test_dict(oldest_time_allowed):
             g_failed_tests_info_dict = pickle.load(dict_file)
 
             test_index = 0
-            while test_index < len(g_failed_tests_info_dict["Testname"]):
+            while test_index < len(g_failed_tests_info_dict["TestName"]):
                 test_dicts = g_failed_tests_info_dict["TestInfo"][test_index]   # a list of dictionary
 
                 dict_index = 0
@@ -265,15 +265,17 @@ def clean_up_failed_test_dict(oldest_time_allowed):
 def clean_up_summary_text(oldest_time_allowed):
     # clean up the summary text data
     if os.path.isfile(g_summary_text_filename):
-        with open(g_failed_tests_dict, 'r') as text_file:
+        with open(g_summary_text_filename, 'r') as text_file:
             with open(g_temp_filename, 'w') as temp_file:
                 for each_line in text_file:
-                    timestamp = float(each_line.split(',')[0])
+                    temp = each_line.split(',')
+                    if len(temp) >= 7:
+                        timestamp = float(temp[0])
 
-                    if (timestamp > oldest_time_allowed):
-                        temp_file.write(each_line)
+                        if (timestamp > oldest_time_allowed):
+                            temp_file.write(each_line)
 
-        with open(g_failed_tests_dict, 'w') as text_file:   # write content back to original summary file
+        with open(g_summary_text_filename, 'w') as text_file:   # write content back to original summary file
             with open(g_temp_filename, 'r') as temp_file:
                 text_file.write(temp_file.read())
 
