@@ -815,19 +815,23 @@ public class GLM extends ModelBuilder<GLMModel,GLMParameters,GLMOutput> {
         final Frame fr1 = new Frame(_codVecs);
         final int xjIdx = fr1.numCols();
         fr1.add("xj", /* just a placeholder */ _codVecs.anyVec()); // add current variable col
-        while (iter1++ < 1000) {
+        double residual_old = Double.POSITIVE_INFINITY;
+        while (iter1++ < 100) {
+
           if (activeData._cats > 0) {
             fr1.replace(xjIdx, activeData._adaptedFrame.vec(0)); // add current variable col
-            double [] b = Arrays.copyOf(betaold,activeData._catOffsets[1]);
+            double [] b = Arrays.copyOf(betaold,activeData._catOffsets[1]+1);
+            b[b.length-1] = 0;
             double [] res = new GLMCoordinateDescentTaskSeqNaiveIcptCat(iter_cnt++,b, /* this is exception, betaold actually holds new intercept value */ betaold[betaold.length-1],activeData.catMap(0),activeData._catNAFill[0]).doAll(fr1)._res;
-            for(int j=0; j < res.length; ++j)
+            for(int j=0; j < res.length-1; ++j)
               beta[j] = b[j] = ADMM.shrinkage(res[j]*wsumu, kappa) * denums[j];
             for (int i = 1; i < activeData._cats; ++i) {
               fr1.replace(xjIdx, activeData._adaptedFrame.vec(i)); // add current variable col
-              double [] b2 = Arrays.copyOfRange(betaold,activeData._catOffsets[i],activeData._catOffsets[i+1]);
+              double [] b2 = Arrays.copyOfRange(betaold,activeData._catOffsets[i],activeData._catOffsets[i+1]+1);
+              b2[b2.length-1] = 0;
               res = new GLMCoordinateDescentTaskSeqNaiveCatCat(iter_cnt++,b2,b,activeData.catMap(i),activeData._catNAFill[i]).doAll(fr1)._res;
               int off = activeData._catOffsets[i];
-              for(int j=0; j < res.length; ++j)
+              for(int j=0; j < res.length-1; ++j)
                 beta[off+j] = b2[j]  = ADMM.shrinkage(res[j]*wsumu, kappa) * denums[off+j];
               b = b2;
             }
@@ -855,6 +859,13 @@ public class GLM extends ModelBuilder<GLMModel,GLMParameters,GLMOutput> {
           if (activeData.numNums() > 0) {
             beta[beta.length - 1] = new GLMCoordinateDescentTaskSeqNaiveNumIcpt(iter_cnt++, betaold[betaold.length - 1], beta[beta.length - 2]).doAll(_codVecs)._res * wsum;
           }
+          // compute new objective
+          double residual = new GLMCoordinateDescentTaskSeqNaiveResidual(betaold[betaold.length - 1], beta[beta.length - 1]).doAll(_codVecs)._res * wsum;
+          if(((residual_old-residual)/residual_old) < 1e-3) {
+            System.out.println("residual old = " + residual_old + ", residual new = " + residual);
+            break;
+          }
+          residual_old = residual;
           double maxDiff = 0;
           for(int i = 0; i < beta.length; ++i){
             double diff = beta[i] - betaold[i];
