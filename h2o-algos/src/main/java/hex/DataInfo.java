@@ -62,6 +62,17 @@ public class DataInfo extends Keyed<DataInfo> {
 
   public int catNAFill(int cid) {return _catNAFill[cid];}
 
+  public int[] catMap(int i) {
+    return _catMap == null?null:_catMap[i];
+  }
+
+  public double normMul(int i) {
+    return _normMul == null?1:_normMul[i];
+  }
+  public double normSub(int i) {
+    return _normSub == null?0:_normSub[i];
+  }
+
   public enum TransformType {
     NONE, STANDARDIZE, NORMALIZE, DEMEAN, DESCALE;
 

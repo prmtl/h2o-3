@@ -779,6 +779,12 @@ public abstract class Chunk extends Iced<Chunk> implements Vec.Holder {
   public double [] getDoubles(double [] vals, int from, int to, double NA){
     return processRows(new ChunkVisitor.DoubleAryVisitor(vals,NA),from,to).vals;
   }
+  public double [] getDoubles(double [] vals, int from, int to, double NA, double bias, double scale){
+    getDoubles(vals,from,to,NA);
+    for(int i = from; i < to; i++)
+      vals[i] = (vals[i] - bias)*scale;
+    return vals;
+  }
   public int [] getIntegers(int [] vals, int from, int to, int NA){
     return processRows(new ChunkVisitor.IntAryVisitor(vals,NA),from,to).vals;
   }

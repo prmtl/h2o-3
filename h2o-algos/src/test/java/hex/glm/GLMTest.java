@@ -706,6 +706,35 @@ public class GLMTest  extends TestUtil {
   }
 
   @Test
+  public void testCoordinateDescent_prostate() {
+    GLMModel model = null;
+
+    Key parsed = Key.make("airlines_parsed");
+    Key<GLMModel> modelKey = Key.make("airlines_model");
+
+    Frame fr = parse_test_file(parsed, "smalldata/logreg/prostate.csv");
+
+    try {
+      // H2O differs on intercept and race, same residual deviance though
+      GLMParameters params = new GLMParameters();
+      params._standardize = true;
+      params._family = Family.binomial;
+      params._solver = Solver.COORDINATE_DESCENT_NAIVE;
+      params._response_column = "IsDepDelayed";
+      params._ignored_columns = new String[]{"IsDepDelayed_REC"};
+      params._train = fr._key;
+      GLM glm = new GLM( params, modelKey);
+      model = glm.trainModel().get();
+      assertTrue(glm.isStopped());
+      System.out.println(model._output._training_metrics);
+
+    } finally {
+      fr.delete();
+      if (model != null) model.delete();
+    }
+  }
+
+  @Test
   public void testCoordinateDescent_airlines_CovUpdates() {
     GLMModel model = null;
 
@@ -1439,6 +1468,7 @@ public class GLMTest  extends TestUtil {
       _val2.reduce(g._val2);
     }
   }
+
 
 
   /**

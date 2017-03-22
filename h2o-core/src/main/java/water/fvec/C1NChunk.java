@@ -32,6 +32,17 @@ public class C1NChunk extends Chunk {
     for (int i : ids) vals[k++] = _mem[i] & 0xFF;
     return vals;
   }
+
+  @Override public int [] getIntegers(int [] vals, int from, int to, int NA) {
+    if(from == 0)
+      for(int i = from; i < to; ++i)
+        vals[i] = _mem[i]&0xFF;
+    else
+      for(int i = from; i < to; ++i)
+        vals[i-from] = _mem[i]&0xFF;
+    return vals;
+  }
+
   @Override public double [] getDoubles(double [] vals, int from, int to, double NA){
     for(int i = from; i < to; ++i)
       vals[i-from] = _mem[i]&0xFF;
